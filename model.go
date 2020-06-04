@@ -53,20 +53,6 @@ type Content struct {
 	} `json:"atUsers"`
 }
 
-func NewMsg(msgtype, title, text string, atMobiles []string) *Msg {
-	return &Msg{
-		Msgtype: msgtype,
-		Markdown: struct {
-			Title string `json:"title"`
-			Text  string `json:"text"`
-		}{Text: text, Title: title},
-		At: AtModel{
-			AtMobiles: atMobiles,
-			IsAtAll:   false,
-		},
-	}
-}
-
 type MsgText struct {
 	Msgtype string `json:"msgtype"`
 	Text    struct {
@@ -99,4 +85,12 @@ func NewMsgText(content string, atMobiles []string) *MsgText {
 
 func marshalMsgText(content string, atMobiles []string) ([]byte, error) {
 	return json.Marshal(NewMsgText(content, atMobiles))
+}
+
+type Markdown struct {
+	Msgtype  string `json:"msgtype"`
+	Markdown struct {
+		Title string `json:"title"`
+		Text  string `json:"text"`
+	} `json:"markdown"`
 }

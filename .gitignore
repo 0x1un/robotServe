@@ -1,3 +1,8 @@
 *.log
 .token
 conf/config.json
+*.out
+robotServe*
+gen/*
+.class
+cert/*

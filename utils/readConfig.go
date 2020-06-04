@@ -12,6 +12,7 @@ type Config struct {
 	AppSecret      string `json:"appsecret"`
 	DepartmentID   string `json:"department_id"`
 	ClassFile      string `json:"class_file"`
+	ImgHost        string `json:"image_host"`
 }
 
 func ReadConfig() (*Config, error) {

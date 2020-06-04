@@ -5,10 +5,23 @@ import (
 	"crypto/sha256"
 	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strconv"
 	"strings"
+)
+
+const (
+	stripChars = "][)(./\n"
+	helpStr    = `
+	指令集:
+		获取指定天数的排班(n <= 0 || n >= 0)
+			shift n => 获取第n天上班人员(如果已有打卡，则只显示打卡成员)
+			shift n all => 获取第n天所有上班人员(不显示打卡时间)
+		获取一周的排班(n <= 0 || n >= 0)
+			shift week n => 获取从第n天开始的往后七天的排班
+	`
 )
 
 func robot(w http.ResponseWriter, r *http.Request) {
@@ -33,44 +46,91 @@ func robot(w http.ResponseWriter, r *http.Request) {
 			logger.Println(err)
 		}
 		// 记录消息记录
-		if resp.ConversationType == "1" {
-			loggerx.Printf("%s sent a message: %s conversationType: %s\n", resp.SenderNick, resp.Text.Content, getConversation(resp.ConversationType))
-		} else if resp.ConversationType == "2" {
-			loggerx.Printf("%s sent a message: %s conversationType: %s, groupName: %s\n", resp.SenderNick, resp.Text.Content, getConversation(resp.ConversationType), resp.ConversationTitle)
-		}
-		if attenCmd := strings.Trim(resp.Text.Content, "\n\r\t.?*,，。!'\"()[]【】"); strings.Contains(attenCmd, "排班") {
-			days := split(attenCmd, "\n/。，. ")
-			if len(days) > 3 {
-				if msg, err := marshalMsgText("一次性最多查询两天的排班", nil); err != nil {
-					logger.Fatal(err)
-				} else {
-					w.Write(msg)
-					return
-				}
-			}
-			buffer := strings.Builder{}
-			for _, day := range days[1:] {
-				d, err := strconv.Atoi(day)
-				if err != nil {
-					logger.Println(err)
-				}
-				buffer.WriteString(fetchUsersScheList(d) + "\n\n")
-			}
-			msg := NewMsgText(strings.Trim(buffer.String(), "\n"), nil)
-			data, err := json.Marshal(msg)
-			if err != nil {
-				logger.Println(err)
-			}
+		logger.Printf("%s sent a message: {{%s}} conversationType: %s, groupName: %s", resp.SenderNick, resp.Text.Content, el(resp.ConversationType == "1", "私聊", "群聊"), resp.ConversationTitle)
+		if data := attenCommand(resp); len(data) != 0 {
 			w.Write(data)
 		}
+
 	}
 }
 
-func getConversation(s string) string {
-	if s == "1" {
-		return "私聊"
+func attenCommand(resp *Content) []byte {
+	cmdStr := strings.Trim(resp.Text.Content, stripChars)
+	if strings.Contains(cmdStr, "help") {
+		msg := NewMsgText(helpStr, nil)
+		data, err := json.Marshal(msg)
+		if err != nil {
+			logger.Println(err)
+		}
+		return data
 	}
-	return "群聊"
+	buffer := strings.Builder{}
+	if strings.HasPrefix(cmdStr, "排班") || strings.HasPrefix(cmdStr, "shift") {
+		// shift single
+		cmdList := split(cmdStr, "./ ")
+		all := false
+		if strings.Contains(cmdStr, "week") {
+			if strings.ContainsAny(cmdStr, "0123456789") {
+				for _, day := range cmdList {
+					dy, err := strconv.Atoi(day)
+					if err != nil {
+						logger.Warnln(err)
+						continue
+					}
+					buffer.WriteString(fmt.Sprintf("![](%s)", config.ImgHost+queryDepartmentUserSchedulerListWeeks(dy)))
+				}
+			} else {
+				buffer.WriteString(fmt.Sprintf("![](%s)", config.ImgHost+queryDepartmentUserSchedulerListWeeks(0)))
+			}
+			m := Markdown{
+				Msgtype: "markdown",
+				Markdown: struct {
+					Title string `json:"title"`
+					Text  string `json:"text"`
+				}{
+					"shiftWeek",
+					buffer.String(),
+				},
+			}
+			data, err := json.Marshal(m)
+			if err != nil {
+				logger.Println(err)
+			}
+			return data
+		}
+
+		if strings.Contains(cmdStr, "all") {
+			all = true
+		}
+		if strings.ContainsAny(cmdStr, "0123456789") {
+			for _, day := range cmdList {
+				dy, err := strconv.Atoi(day)
+				if err != nil {
+					logger.Println(err)
+					continue
+				}
+				buffer.WriteString(fetchUsersScheList(dy, all))
+			}
+		} else {
+			buffer.WriteString(fetchUsersScheList(0, all))
+		}
+		msg := NewMsgText(strings.Trim(buffer.String(), "\n"), nil)
+		if data, err := json.Marshal(msg); err != nil {
+			logger.Println(err)
+			return nil
+		} else {
+			return data
+		}
+
+	}
+	return nil
+}
+
+func el(condition bool, tv, fv interface{}) interface{} {
+	if condition {
+		return tv
+	}
+	return fv
 }
 
 func split(s, seps string) []string {
