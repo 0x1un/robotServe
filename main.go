@@ -22,6 +22,7 @@ func init() {
 		panic(err)
 	}
 	logger.SetOutput(file)
+	logger.SetReportCaller(true)
 
 	conf, err := utils.ReadConfig()
 	if err != nil {
