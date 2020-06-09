@@ -2,7 +2,7 @@
 .token
 conf/config.json
 *.out
-robotServe*
+robotServe
 gen/*
 .class
 cert/*

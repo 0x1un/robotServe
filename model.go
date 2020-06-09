@@ -2,21 +2,7 @@ package main
 
 import "encoding/json"
 
-type AtModel struct {
-	AtMobiles []string `json:"atMobiles"`
-	IsAtAll   bool     `json:"isAtAll"`
-}
-
-// 需要返回的数据
-type Msg struct {
-	Msgtype  string `json:"msgtype"`
-	Markdown struct {
-		Title string `json:"title"`
-		Text  string `json:"text"`
-	} `json:"markdown"`
-	At AtModel `json:"at"`
-}
-
+// Content: dingtalk robot message
 type Content struct {
 	// 目前只支持text
 	Msgtype string `json:"msgtype"`
@@ -52,6 +38,10 @@ type Content struct {
 		StaffID    string `json:"staffId"`
 	} `json:"atUsers"`
 }
+type AtModel struct {
+	AtMobiles []string `json:"atMobiles"`
+	IsAtAll   bool     `json:"isAtAll"`
+}
 
 type MsgText struct {
 	Msgtype string `json:"msgtype"`
@@ -65,8 +55,8 @@ type MsgText struct {
 	} `json:"at"`
 }
 
-func NewMsgText(content string, atMobiles []string) *MsgText {
-	return &MsgText{
+func NewMsgText(content string, atMobiles []string) []byte {
+	msg := &MsgText{
 		Msgtype: "text",
 		Text: struct {
 			Content string `json:"content"`
@@ -81,10 +71,11 @@ func NewMsgText(content string, atMobiles []string) *MsgText {
 			AtMobiles: atMobiles,
 		},
 	}
-}
-
-func marshalMsgText(content string, atMobiles []string) ([]byte, error) {
-	return json.Marshal(NewMsgText(content, atMobiles))
+	data, err := json.Marshal(msg)
+	if err != nil {
+		logger.Panic(err)
+	}
+	return data
 }
 
 type Markdown struct {
@@ -93,4 +84,22 @@ type Markdown struct {
 		Title string `json:"title"`
 		Text  string `json:"text"`
 	} `json:"markdown"`
+}
+
+func markdown(title, msg string) []byte {
+	md := &Markdown{
+		Msgtype: "markdown",
+		Markdown: struct {
+			Title string `json:"title"`
+			Text  string `json:"text"`
+		}{
+			Title: title,
+			Text:  msg,
+		},
+	}
+	data, err := json.Marshal(md)
+	if err != nil {
+		logger.Panic(err)
+	}
+	return data
 }

@@ -50,77 +50,55 @@ func robot(w http.ResponseWriter, r *http.Request) {
 		if data := attenCommand(resp); len(data) != 0 {
 			w.Write(data)
 		}
+	}
+}
+
+func loopCmdList(cmdList []string, typ string, all bool, buffer *strings.Builder) {
+	for _, day := range cmdList {
+		if dy, err := strconv.Atoi(day); err != nil {
+			continue
+		} else {
+			if typ == "week" {
+				buffer.WriteString(fmt.Sprintf("![](%s)",
+					config.ImgHost+queryDepartmentUserSchedulerListWeeks(dy)))
+			} else if typ == "sigle" {
+				buffer.WriteString(fetchUsersScheList(dy, all))
+			}
+		}
 
 	}
 }
 
 func attenCommand(resp *Content) []byte {
 	cmdStr := strings.Trim(resp.Text.Content, stripChars)
-	if strings.Contains(cmdStr, "help") {
-		msg := NewMsgText(helpStr, nil)
-		data, err := json.Marshal(msg)
-		if err != nil {
-			logger.Println(err)
-		}
-		return data
-	}
 	buffer := strings.Builder{}
 	if strings.HasPrefix(cmdStr, "排班") || strings.HasPrefix(cmdStr, "shift") {
 		// shift single
 		cmdList := split(cmdStr, "./ ")
 		all := false
+
 		if strings.Contains(cmdStr, "week") {
 			if strings.ContainsAny(cmdStr, "0123456789") {
-				for _, day := range cmdList {
-					dy, err := strconv.Atoi(day)
-					if err != nil {
-						logger.Warnln(err)
-						continue
-					}
-					buffer.WriteString(fmt.Sprintf("![](%s)", config.ImgHost+queryDepartmentUserSchedulerListWeeks(dy)))
-				}
+				loopCmdList(cmdList, "week", false, &buffer)
+				return markdown("shift week command", buffer.String())
 			} else {
-				buffer.WriteString(fmt.Sprintf("![](%s)", config.ImgHost+queryDepartmentUserSchedulerListWeeks(0)))
+				buffer.WriteString(
+					fmt.Sprintf("![](%s)", config.ImgHost+queryDepartmentUserSchedulerListWeeks(0)),
+				)
+				return markdown("shift week command", buffer.String())
 			}
-			m := Markdown{
-				Msgtype: "markdown",
-				Markdown: struct {
-					Title string `json:"title"`
-					Text  string `json:"text"`
-				}{
-					"shiftWeek",
-					buffer.String(),
-				},
-			}
-			data, err := json.Marshal(m)
-			if err != nil {
-				logger.Println(err)
-			}
-			return data
-		}
 
+		}
 		if strings.Contains(cmdStr, "all") {
 			all = true
 		}
 		if strings.ContainsAny(cmdStr, "0123456789") {
-			for _, day := range cmdList {
-				dy, err := strconv.Atoi(day)
-				if err != nil {
-					logger.Println(err)
-					continue
-				}
-				buffer.WriteString(fetchUsersScheList(dy, all))
-			}
+			loopCmdList(cmdList, "sigle", all, &buffer)
 		} else {
 			buffer.WriteString(fetchUsersScheList(0, all))
 		}
 		msg := NewMsgText(strings.Trim(buffer.String(), "\n"), nil)
-		if data, err := json.Marshal(msg); err != nil {
-			logger.Println(err)
-			return nil
-		} else {
-			return data
-		}
+		return msg
 
 	}
 	return nil
