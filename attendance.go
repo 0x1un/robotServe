@@ -141,12 +141,14 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 	resp, err := ding.OapiAttendanceScheduleListbyusersRequest(config.OpUserID, userStr, fromTime, endTime)
 	if err != nil {
 		logger.Println(err)
+		return ""
 	}
 	wl := make(map[string][]userShift, len(userMap))
 	for i, v := range resp.Result {
 		if v.CheckType == "OffDuty" {
 			continue
 		}
+		fmt.Println(v)
 		workDate, err := time.Parse(format+" 15:04:05", v.WorkDate)
 		if err != nil {
 			logger.Println(err)
@@ -179,7 +181,8 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 		}
 		wl[userMap[v.Userid]] = append(wl[userMap[v.Userid]], u)
 	}
-	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: fillTemplate(wl), BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
+	oput := fillTemplate(wl)
+	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: oput, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
 	output, err := GenerateImage(&imgOpt)
 	if err != nil {
 		logger.Println(err)
