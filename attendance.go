@@ -1,6 +1,8 @@
 package main
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -117,13 +119,14 @@ func findFile(filename string) bool {
 	return false
 }
 
+func getFileHash(data []byte) string {
+	hash := md5.Sum(data)
+	return hex.EncodeToString(hash[:])
+}
+
 // 批量查询部门成员最近七天的班次
 func queryDepartmentUserSchedulerListWeeks(at int) string {
 	xDate := time.Now().AddDate(0, 0, at)
-	filename := xDate.Format(format) + ".png"
-	if findFile(filename) {
-		return filename
-	}
 	userMap := getDepartmentUsers()
 	data, err := ioutil.ReadFile(config.ClassFile)
 	if err != nil {
@@ -148,7 +151,6 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 		if v.CheckType == "OffDuty" {
 			continue
 		}
-		fmt.Println(v)
 		workDate, err := time.Parse(format+" 15:04:05", v.WorkDate)
 		if err != nil {
 			logger.Println(err)
@@ -182,6 +184,7 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 		wl[userMap[v.Userid]] = append(wl[userMap[v.Userid]], u)
 	}
 	oput := fillTemplate(wl)
+	filename := getFileHash([]byte(oput)) + ".png"
 	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: oput, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
 	output, err := GenerateImage(&imgOpt)
 	if err != nil {
