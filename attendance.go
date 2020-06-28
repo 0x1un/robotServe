@@ -1,17 +1,21 @@
 package main
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sort"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/0x1un/godingtalk"
+	"golang.org/x/text/encoding/simplifiedchinese"
+	"golang.org/x/text/transform"
 )
 
 type userSchedulerList struct {
@@ -28,26 +32,37 @@ const (
 	format = "2006-01-02"
 )
 
-type stringSlice []string
+type nameSlice []string
 
-func (p stringSlice) Len() int { return len(p) }
-func (p stringSlice) Less(i, j int) bool {
-	defer func() {
-		if r := recover(); r != nil {
-			logger.Println(r)
+func (s nameSlice) Len() int      { return len(s) }
+func (s nameSlice) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+func (s nameSlice) Less(i, j int) bool {
+	a, _ := UTF82GBK(s[i])
+	b, _ := UTF82GBK(s[j])
+	bLen := len(b)
+	for idx, chr := range a {
+		if idx > bLen-1 {
+			return false
 		}
-	}()
-	p1, err := time.Parse(format, p[i])
-	if err != nil {
-		panic(err)
+		if chr != b[idx] {
+			return chr < b[idx]
+		}
 	}
-	p2, err := time.Parse(format, p[j])
-	if err != nil {
-		panic(err)
-	}
-	return p1.Unix() < p2.Unix()
+	return true
 }
-func (p stringSlice) Swap(i, j int) { p[i], p[j] = p[j], p[i] }
+
+//UTF82GBK : transform UTF8 rune into GBK byte array
+func UTF82GBK(src string) ([]byte, error) {
+	GB18030 := simplifiedchinese.All[0]
+	return ioutil.ReadAll(transform.NewReader(bytes.NewReader([]byte(src)), GB18030.NewEncoder()))
+}
+
+//GBK2UTF8 : transform  GBK byte array into UTF8 string
+func GBK2UTF8(src []byte) (string, error) {
+	GB18030 := simplifiedchinese.All[0]
+	bytes, err := ioutil.ReadAll(transform.NewReader(bytes.NewReader(src), GB18030.NewDecoder()))
+	return string(bytes), err
+}
 
 type weekList map[string][]userShift
 
@@ -82,23 +97,29 @@ func fillTemplate(wl weekList) string {
 	if err != nil {
 		panic(err)
 	}
+	sortName := make(nameSlice, 0)
+	for name := range wl {
+		sortName = append(sortName, name)
+	}
+	sort.Strings(sortName)
 
 	buffer.WriteString(fmt.Sprintf(`<head><style>%s%s</style></head><table class=topazCells><tbody><tr>`, string(cssData), `@font-face {
         font-family: 楷体;
         src: url('simkai.ttf');
     `))
 	date := false
-	for name, classList := range wl {
+
+	for _, name := range sortName {
 		if !date {
 			buffer.WriteString("<td>姓名/日期</td>")
-			for _, class := range classList {
+			for _, class := range wl[name] {
 				buffer.WriteString(fmt.Sprintf("<td>%s</td>", class.dateTime))
 			}
 			date = true
 			buffer.WriteString(`</tr>`)
 		}
 		buffer.WriteString(fmt.Sprintf("<tr><td>%s</td>", name))
-		for _, class := range classList {
+		for _, class := range wl[name] {
 			buffer.WriteString(fmt.Sprintf("<td>%s</td>", class.className))
 		}
 		buffer.WriteString("</tr>")
