@@ -23,9 +23,21 @@ type userSchedulerList struct {
 	users     map[string]string
 }
 
+var (
+	weekday = [7]string{
+		"星期天",
+		"星期一",
+		"星期二",
+		"星期三",
+		"星期四",
+		"星期五",
+		"星期六",
+	}
+)
+
 type userShift struct {
 	className string
-	dateTime  string
+	dateTime  time.Time
 }
 
 const (
@@ -49,6 +61,28 @@ func (s nameSlice) Less(i, j int) bool {
 		}
 	}
 	return true
+}
+
+func zellerWeek(year, month, day uint16) string {
+	var y, m, c uint16
+	if month >= 3 {
+		m = month
+		y = year % 100
+		c = year / 100
+	} else {
+		m = month + 12
+		y = (year - 1) % 100
+		c = (year - 1) / 100
+	}
+	week := y + (y / 4) + (c / 4) - 2*c + ((26 * (m + 1)) / 10) + day - 1
+	if week < 0 {
+		week = 7 - (-week)%7
+
+	} else {
+		week = week % 7
+	}
+	which_week := int(week)
+	return weekday[which_week]
 }
 
 //UTF82GBK : transform UTF8 rune into GBK byte array
@@ -113,7 +147,9 @@ func fillTemplate(wl weekList) string {
 		if !date {
 			buffer.WriteString("<td>姓名/日期</td>")
 			for _, class := range wl[name] {
-				buffer.WriteString(fmt.Sprintf("<td>%s</td>", class.dateTime))
+				dat := class.dateTime.Format(format)
+				weekdy := class.dateTime.Weekday()
+				buffer.WriteString(fmt.Sprintf("<td>%s\n%s</td>", dat, weekday[weekdy]))
 			}
 			date = true
 			buffer.WriteString(`</tr>`)
@@ -184,7 +220,7 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 				}
 				return class[sid]
 			}(v.ShiftID),
-			dateTime: workDate.Format(format),
+			dateTime: workDate,
 		}
 		// 修复加班到第二天导致的排班表错乱重复的现象
 		if x := i + 1; x < len(resp.Result) && v.IsRest == "Y" && resp.Result[x].WorkDate == v.WorkDate {
@@ -235,7 +271,7 @@ func getDepartmentUserSchedulerListWeeks() {
 				if v.ClassName == "" || v.ClassID == 0 {
 					class = append(class, userShift{
 						className: "休息",
-						dateTime:  tm.Format(format),
+						dateTime:  tm,
 					})
 					continue
 				}
@@ -245,7 +281,7 @@ func getDepartmentUserSchedulerListWeeks() {
 				}
 				class = append(class, userShift{
 					className: v.ClassName,
-					dateTime:  tm.Format(format),
+					dateTime:  tm,
 				})
 			}
 		}
