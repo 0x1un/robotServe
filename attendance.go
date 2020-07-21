@@ -378,17 +378,17 @@ func getSignStatus(users, classList map[string]string, ftm, ttm time.Time, all b
 	}
 	offs := make(map[string]string)
 	onss := make(map[string]bool)
-	for i, v := range resp.Recordresult {
+	for _, v := range resp.Recordresult {
 		user := users[v.UserID]
 		if v.CheckType == "OnDuty" {
+			if buffer.String()[buffer.Len()-1] != '\n' {
+				buffer.WriteString("\n")
+			}
 			buffer.WriteString(fmt.Sprintf("%s: %s • (%s)", user, classList[users[v.UserID]], hour(v.UserCheckTime)))
 			if off, ok := offs[user]; ok {
 				buffer.WriteString(off)
 			}
 			onss[user] = true
-			if i+1 < n && resp.Recordresult[i+1].CheckType != "OffDuty" {
-				buffer.WriteString("\n")
-			}
 		} else if v.CheckType == "OffDuty" {
 			of := fmt.Sprintf("/[%s]\n", hour(v.UserCheckTime))
 			offs[user] = of
