@@ -185,7 +185,6 @@ func queryDepartmentUserLeaveByDay(day int) string {
 	if day == 0 {
 		day--
 	}
-	fmt.Println(day)
 	umap := getDepartmentUsers()
 	uidlist := convertMapKeyOrValueToList(umap, true)
 	now := time.Now()
