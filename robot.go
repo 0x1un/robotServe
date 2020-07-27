@@ -77,6 +77,24 @@ func attenCommand(resp *Content) []byte {
 		cmdList := split(cmdStr, "./ ")
 		all := false
 
+		if strings.Contains(cmdStr, "leave") {
+			if strings.ContainsAny(cmdStr, "0123456789") {
+				for _, v := range cmdList {
+					day, err := strconv.Atoi(v)
+					if err != nil {
+						continue
+					}
+					buffer.WriteString(queryDepartmentUserLeaveByDay(day))
+				}
+				return markdown("shift week command", buffer.String())
+			} else {
+				buffer.WriteString(
+					queryDepartmentUserLeaveByDay(0),
+				)
+				return markdown("shift week command", buffer.String())
+			}
+		}
+
 		if strings.Contains(cmdStr, "week") {
 			if strings.ContainsAny(cmdStr, "0123456789") {
 				loopCmdList(cmdList, "week", false, &buffer)

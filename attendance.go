@@ -181,6 +181,26 @@ func getFileHash(data []byte) string {
 	return hex.EncodeToString(hash[:])
 }
 
+func queryDepartmentUserLeaveByDay(day int) string {
+	if day == 0 {
+		day--
+	}
+	fmt.Println(day)
+	umap := getDepartmentUsers()
+	uidlist := convertMapKeyOrValueToList(umap, true)
+	now := time.Now()
+	date := now.AddDate(0, 0, day)
+	fdate := date.UnixNano() / 1e6
+	edate := date.AddDate(0, 0, now.Day()-date.Day()).UnixNano() / 1e6
+	leavelist := getLeaveStatus(uidlist, fdate, edate)
+	buf := strings.Builder{}
+	buf.WriteString(fmt.Sprintf("从%s开始的所有请假人员:\n\n", date.Format(format)))
+	for k, v := range leavelist {
+		buf.WriteString(fmt.Sprintf("%s: %s -> %s\n", umap[k], parseUnixNano2Human(v.startTime*1e6), parseUnixNano2Human(v.endTime*1e6)))
+	}
+	return buf.String()
+}
+
 // 批量查询部门成员最近七天的班次
 func queryDepartmentUserSchedulerListWeeks(at int) string {
 	xDate := time.Now().AddDate(0, 0, at)
@@ -294,6 +314,15 @@ func getDepartmentUserSchedulerListWeeks() {
 		logger.Println(err)
 	}
 	logger.Println(output)
+}
+
+func parseUnixNano2Human(tm int64) string {
+	tme := time.Unix(0, tm)
+	timestr := tme.Format("2006-01-02 15:04:05")
+	if strings.HasPrefix(timestr, "1970-01-01") {
+		return strings.Split(timestr, " ")[1]
+	}
+	return timestr
 }
 
 func parseTimeRetHour(tm string) string {
