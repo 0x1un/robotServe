@@ -100,7 +100,6 @@ func GBK2UTF8(src []byte) (string, error) {
 
 type weekList map[string][]userShift
 
-// 返回值应为一个[]map[string]struct{startTime, endTime int64}
 func getLeaveAllUser(uidlist []string, sdate, edate int64) []struct {
 	startTime string
 	endTime   string
@@ -220,9 +219,18 @@ func queryDepartmentUserLeaveByDay(day int) string {
 	date := now.AddDate(0, 0, day)
 	fdate := date.UnixNano() / 1e6
 	edate := date.AddDate(0, 0, now.Day()-date.Day()).UnixNano() / 1e6
+	title := "过去%v天的请假人员:\n\n"
+	if day >= 1 {
+		title = "未来%v天的请假人员:\n\n"
+		edate = fdate
+		fdate = now.UnixNano() / 1e6
+	}
 	leavelist := getLeaveAllUser(uidlist, fdate, edate)
+	if day < 0 {
+		day = -day
+	}
 	buf := strings.Builder{}
-	buf.WriteString(fmt.Sprintf("从%s开始的所有请假人员:\n\n", date.Format(format)))
+	buf.WriteString(fmt.Sprintf(title, day))
 	for _, v := range leavelist {
 		buf.WriteString(fmt.Sprintf("%s:%s->%s\n\n", umap[v.uid], v.startTime, v.endTime))
 	}
