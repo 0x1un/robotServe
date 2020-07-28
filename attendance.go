@@ -100,6 +100,35 @@ func GBK2UTF8(src []byte) (string, error) {
 
 type weekList map[string][]userShift
 
+// 返回值应为一个[]map[string]struct{startTime, endTime int64}
+func getLeaveAllUser(uidlist []string, sdate, edate int64) []struct {
+	startTime string
+	endTime   string
+	uid       string
+} {
+	resp, err := ding.OapiAttendanceGetleavestatusRequest(uidlist, sdate, edate, 0, 20)
+	if err != nil {
+		logger.Panicln(err)
+	}
+	retv := make([]struct {
+		startTime string
+		endTime   string
+		uid       string
+	}, 0)
+	for _, v := range resp.Result.LeaveStatus {
+		retv = append(retv, struct {
+			startTime string
+			endTime   string
+			uid       string
+		}{
+			parseUnixNano2Human(v.StartTime * 1e6),
+			parseUnixNano2Human(v.EndTime * 1e6),
+			v.Userid,
+		})
+	}
+	return retv
+}
+
 func getLeaveStatus(useridList []string, startDate, endDate int64) map[string]struct {
 	startTime int64
 	endTime   int64
@@ -191,11 +220,11 @@ func queryDepartmentUserLeaveByDay(day int) string {
 	date := now.AddDate(0, 0, day)
 	fdate := date.UnixNano() / 1e6
 	edate := date.AddDate(0, 0, now.Day()-date.Day()).UnixNano() / 1e6
-	leavelist := getLeaveStatus(uidlist, fdate, edate)
+	leavelist := getLeaveAllUser(uidlist, fdate, edate)
 	buf := strings.Builder{}
 	buf.WriteString(fmt.Sprintf("从%s开始的所有请假人员:\n\n", date.Format(format)))
-	for k, v := range leavelist {
-		buf.WriteString(fmt.Sprintf("%s: %s -> %s\n", umap[k], parseUnixNano2Human(v.startTime*1e6), parseUnixNano2Human(v.endTime*1e6)))
+	for _, v := range leavelist {
+		buf.WriteString(fmt.Sprintf("%s:%s->%s\n\n", umap[v.uid], v.startTime, v.endTime))
 	}
 	return buf.String()
 }
