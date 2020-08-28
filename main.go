@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/0x1un/godingtalk"
 	"github.com/0x1un/robotServe/utils"
@@ -24,7 +25,7 @@ func init() {
 	logger.SetOutput(file)
 	logger.SetReportCaller(true)
 
-	conf, err := utils.ReadConfig()
+	conf, err := utils.ReadConfig("conf/config.json")
 	if err != nil {
 		logger.Panic("failed to readConfig", err)
 	}
@@ -42,9 +43,14 @@ func init() {
 
 func main() {
 	defer file.Close()
+	srv := &http.Server{
+		Addr:         ":443",
+		ReadTimeout:  10 * time.Second,
+		WriteTimeout: 10 * time.Second,
+	}
 	http.HandleFunc("/", robot)
 	logger.Println("listen on ::443")
-	if err := http.ListenAndServeTLS(":443", "cert/server.pem", "cert/server.key", nil); err != nil {
+	if err := srv.ListenAndServeTLS("cert/server.pem", "cert/server.key"); err != nil {
 		logger.Println(err)
 	}
 }
