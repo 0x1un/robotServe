@@ -539,7 +539,8 @@ func getDepartmentUsers() map[string]string {
 	return users.user
 }
 
-func req(f func(string, int64, int64, string) (godingtalk.UserSimplelistResp, error), a string, b, c int64, d string) (godingtalk.UserSimplelistResp, error) {
+func req(f func(string, int64, int64, string) (godingtalk.UserSimplelistResp, error),
+	a string, b, c int64, d string) (godingtalk.UserSimplelistResp, error) {
 	return f(a, b, c, d)
 }
 
