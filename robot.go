@@ -10,6 +10,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/0x1un/robotServe/insp"
 )
 
 const (
@@ -47,6 +49,9 @@ func robot(w http.ResponseWriter, r *http.Request) {
 		}
 		// 记录消息记录
 		logger.Printf("%s sent a message: {{%s}} conversationType: %s, groupName: %s", resp.SenderNick, resp.Text.Content, el(resp.ConversationType == "1", "私聊", "群聊"), resp.ConversationTitle)
+		if data := inspectCommand(resp); len(data) != 0 {
+			w.Write(data)
+		}
 		if data := attenCommand(resp); len(data) != 0 {
 			w.Write(data)
 		}
@@ -67,6 +72,26 @@ func loopCmdList(cmdList []string, typ string, all bool, buffer *strings.Builder
 		}
 
 	}
+}
+
+func inspectCommand(resp *Content) []byte {
+	if strings.Trim(resp.Text.Content, stripChars+" ") != "inspect" {
+		return nil
+	}
+	models, err := insp.Insp(resp.SenderStaffID, logger)
+	if err != nil {
+		return markdown("inspect command failed: ", err.Error())
+	}
+	for _, model := range models {
+		resp, err := ding.OapiProcessinstanceCreateRequest(model)
+		if err != nil {
+			return markdown("inspect command failed: ", err.Error())
+		}
+		if resp.ErrCode != 0 {
+			return markdown("inspect command failed: ", err.Error())
+		}
+	}
+	return markdown("inspect command", "网络巡检已生成，请务必认真审批！")
 }
 
 func attenCommand(resp *Content) []byte {
