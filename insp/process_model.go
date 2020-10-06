@@ -75,7 +75,7 @@ func DiDiModel(components map[string][]string, opUID string) godingtalk.Processi
 		"CD-WJ 联通专线|流量图5",
 		"CD-WJ 电信专线|流量图6",
 		"WJ-BJ 联通点对点专线|流量图7",
-		"WJ-HZ 电信点对点专线|流量图8",
+		"WJ-HZ电信点对点专线|流量图8",
 	}
 	subFvs.Add("现场网络", "正常")
 	subFvs.Add("网络策略", "正常")

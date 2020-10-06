@@ -16,14 +16,6 @@ import (
 
 const (
 	stripChars = "][)(./\n"
-	helpStr    = `
-	指令集:
-		获取指定天数的排班(n <= 0 || n >= 0)
-			shift n => 获取第n天上班人员(如果已有打卡，则只显示打卡成员)
-			shift n all => 获取第n天所有上班人员(不显示打卡时间)
-		获取一周的排班(n <= 0 || n >= 0)
-			shift week n => 获取从第n天开始的往后七天的排班
-	`
 )
 
 func robot(w http.ResponseWriter, r *http.Request) {
@@ -34,7 +26,10 @@ func robot(w http.ResponseWriter, r *http.Request) {
 		originSign := r.Header.Get("Sign")
 		localSign := sign(r.Header.Get("Timestamp"), config.RobotAppSecret)
 		if !compareSign(originSign, localSign) {
-			w.Write([]byte(`{"msgtype": "empty"}`))
+			_, err := w.Write([]byte(`{"msgtype": "empty"}`))
+			if err != nil {
+				logger.Error(err)
+			}
 			return
 		}
 		body, err := ioutil.ReadAll(r.Body)
@@ -50,10 +45,16 @@ func robot(w http.ResponseWriter, r *http.Request) {
 		// 记录消息记录
 		logger.Printf("%s sent a message: {{%s}} conversationType: %s, groupName: %s", resp.SenderNick, resp.Text.Content, el(resp.ConversationType == "1", "私聊", "群聊"), resp.ConversationTitle)
 		if data := inspectCommand(resp); len(data) != 0 {
-			w.Write(data)
+			dataLen, err := w.Write(data)
+			if dataLen != len(data) || err != nil {
+				logger.Errorf("消息写入失败: %v", err)
+			}
 		}
 		if data := attenCommand(resp); len(data) != 0 {
-			w.Write(data)
+			dataLen, err := w.Write(data)
+			if dataLen != len(data) || err != nil {
+				logger.Errorf("消息写入失败: %v", err)
+			}
 		}
 	}
 }
@@ -88,7 +89,7 @@ func inspectCommand(resp *Content) []byte {
 			return markdown("inspect command failed: ", err.Error())
 		}
 		if resp.ErrCode != 0 {
-			return markdown("inspect command failed: ", err.Error())
+			return markdown("inspect command failed: ", resp.ErrMsg)
 		}
 	}
 	return markdown("inspect command", "网络巡检已生成，请务必认真审批！")

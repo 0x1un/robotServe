@@ -40,6 +40,16 @@ type userShift struct {
 	dateTime  time.Time
 }
 
+type userShifts []userShift
+
+func (u *userShifts) push(val userShift) {
+	*u = append(*u, val)
+}
+
+func (u *userShifts) backPush(val userShift) {
+	*u = append(userShifts{val}, *u...)
+}
+
 const (
 	format = "2006-01-02"
 )
@@ -63,6 +73,7 @@ func (s nameSlice) Less(i, j int) bool {
 	return true
 }
 
+// zellerWeek 蔡勒算法，计算星期几
 func zellerWeek(year, month, day uint16) string {
 	var y, m, c uint16
 	if month >= 3 {
@@ -81,24 +92,24 @@ func zellerWeek(year, month, day uint16) string {
 	} else {
 		week = week % 7
 	}
-	which_week := int(week)
-	return weekday[which_week]
+	whichWeek := int(week)
+	return weekday[whichWeek]
 }
 
-//UTF82GBK : transform UTF8 rune into GBK byte array
+//UTF82GBK transform UTF8 rune into GBK byte array
 func UTF82GBK(src string) ([]byte, error) {
 	GB18030 := simplifiedchinese.All[0]
 	return ioutil.ReadAll(transform.NewReader(bytes.NewReader([]byte(src)), GB18030.NewEncoder()))
 }
 
-//GBK2UTF8 : transform  GBK byte array into UTF8 string
+//GBK2UTF8 transform GBK byte array into UTF8 string
 func GBK2UTF8(src []byte) (string, error) {
 	GB18030 := simplifiedchinese.All[0]
 	bytes, err := ioutil.ReadAll(transform.NewReader(bytes.NewReader(src), GB18030.NewDecoder()))
 	return string(bytes), err
 }
 
-type weekList map[string][]userShift
+type weekList map[string]userShifts
 
 func getLeaveAllUser(uidlist []string, sdate, edate int64) []struct {
 	startTime string
@@ -251,15 +262,27 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 	}
 	fromTime := xDate.UnixNano() / 1e6
 	endTime := xDate.AddDate(0, 0, 6).UnixNano() / 1e6
+	followDate := xDate
 	useridList := convertMapKeyOrValueToList(userMap, true)
 	userStr := strings.Join(useridList, ",")
 	leaveList := getLeaveStatus(useridList, fromTime, endTime)
-	resp, err := ding.OapiAttendanceScheduleListbyusersRequest(config.OpUserID, userStr, fromTime, endTime)
+	resp, err := ding.OapiAttendanceScheduleListbyusersRequest(
+		config.OpUserID,
+		userStr, fromTime, endTime)
 	if err != nil {
 		logger.Println(err)
 		return ""
 	}
-	wl := make(map[string][]userShift, len(userMap))
+	wl := make(map[string]userShifts, len(userMap))
+	// 初始化week list表
+	for _, name := range userMap {
+		for i := 0; i < 7; i++ {
+			wl[name] = append(wl[name], userShift{
+				dateTime:  followDate.AddDate(0, 0, i),
+				className: "未排",
+			})
+		}
+	}
 	for i, v := range resp.Result {
 		if v.CheckType == "OffDuty" {
 			continue
@@ -294,11 +317,19 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 			}
 			delete(leaveList, v.Userid)
 		}
-		wl[userMap[v.Userid]] = append(wl[userMap[v.Userid]], u)
+		for name, clsList := range wl {
+			if name == userMap[v.Userid] {
+				for idx, cls := range clsList {
+					if u.dateTime.Format(format) == cls.dateTime.Format(format) {
+						wl[name][idx].className = u.className
+					}
+				}
+			}
+		}
 	}
-	oput := fillTemplate(wl)
-	filename := getFileHash([]byte(oput)) + ".png"
-	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: oput, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
+	template := fillTemplate(wl)
+	filename := getFileHash([]byte(template)) + ".png"
+	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: template, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
 	output, err := GenerateImage(&imgOpt)
 	if err != nil {
 		logger.Println(err)
@@ -308,12 +339,12 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 }
 
 // getDepartmentUserSchedulerListWeeks 查询最近一周部门成员排班
-// 此方法使用的单个天数获取 (已经弃用了)
+// 此方法使用的单个天数获取 (已经弃用)
 func getDepartmentUserSchedulerListWeeks() {
 	userMap := getDepartmentUsers()
-	wl := make(map[string][]userShift, len(userMap))
+	wl := make(map[string]userShifts, len(userMap))
 	for id, name := range userMap {
-		class := []userShift{}
+		class := make([]userShift, 0)
 		// currTime := time.Time{}
 		for day := 0; day < 7; day++ {
 			tm := time.Now()
@@ -368,6 +399,7 @@ func parseTimeRetHour(tm string) string {
 	}
 	return t.Format("15:04:05")
 }
+
 func convertMapKeyOrValueToList(m map[string]string, key bool) (ids []string) {
 	for k, v := range m {
 		if key {
@@ -420,7 +452,7 @@ func removeSpaceLine(s *strings.Builder) string {
 		if s1[i] == 10 && s1[i+1] == 10 {
 			continue
 		}
-		s.WriteByte((s1[i]))
+		s.WriteByte(s1[i])
 	}
 	return s.String()
 }
@@ -466,7 +498,7 @@ func getSignStatus(users, classList map[string]string, ftm, ttm time.Time, all b
 }
 
 func hour(ts int64) string {
-	return time.Unix(int64(ts)/1000, 0).Local().Format("15:04:05")
+	return time.Unix(ts/1000, 0).Local().Format("15:04:05")
 }
 
 func classToFile() error {
@@ -551,7 +583,7 @@ func appendUsers(box map[string]string, s godingtalk.UserSimplelistResp) {
 }
 
 func getAttendanceGroups() []godingtalk.AttendanceGetsimplegroupsResp {
-	groupList := []godingtalk.AttendanceGetsimplegroupsResp{}
+	groupList := make([]godingtalk.AttendanceGetsimplegroupsResp, 0)
 	getSimpleGroupsReq := ding.OapiAttendanceGetsimplegroupsRequest
 	for offset, size := 0, 10; ; offset = size + offset {
 		resp, err := getSimpleGroupsReq(int64(offset), int64(size))

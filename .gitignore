@@ -6,3 +6,4 @@ robotServe
 gen/*
 .class
 cert/*
+init.ini
