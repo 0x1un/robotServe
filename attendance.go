@@ -278,12 +278,14 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 	for _, name := range userMap {
 		for i := 0; i < 7; i++ {
 			wl[name] = append(wl[name], userShift{
-				dateTime:  followDate.AddDate(0, 0, i),
-				className: "未排",
+				dateTime: followDate.AddDate(0, 0, i),
+				// 这里为钉钉API自身的bug，有时候不会返回休假的值，或当天未排班的值，直接模糊定义
+				className: "休",
 			})
 		}
 	}
 	for i, v := range resp.Result {
+		wlName := userMap[v.Userid]
 		if v.CheckType == "OffDuty" {
 			continue
 		}
@@ -293,12 +295,12 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 		}
 		wd := workDate.UnixNano() / 1e6
 		u := userShift{
-			className: func(sid int) string {
-				if sid == 0 {
-					return "休息"
+			className: func(sid int, rest string) string {
+				if sid == 0 && rest == "Y" {
+					return "休(true)"
 				}
 				return class[sid]
-			}(v.ShiftID),
+			}(v.ShiftID, v.IsRest),
 			dateTime: workDate,
 		}
 		// 修复加班到第二天导致的排班表错乱重复的现象
@@ -317,19 +319,16 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 			}
 			delete(leaveList, v.Userid)
 		}
-		for name, clsList := range wl {
-			if name == userMap[v.Userid] {
-				for idx, cls := range clsList {
-					if u.dateTime.Format(format) == cls.dateTime.Format(format) {
-						wl[name][idx].className = u.className
-					}
-				}
+		for idx, cls := range wl[wlName] {
+			if u.dateTime.Format(format) == cls.dateTime.Format(format) {
+				wl[wlName][idx].className = u.className
+				break
 			}
 		}
 	}
 	template := fillTemplate(wl)
 	filename := getFileHash([]byte(template)) + ".png"
-	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: template, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 400, Width: 700}
+	imgOpt := ImageOptions{Input: "-", Format: "png", Output: "gen/" + filename, Html: template, BinaryPath: `/usr/local/bin/wkhtmltoimage`, Height: 450, Width: 750}
 	output, err := GenerateImage(&imgOpt)
 	if err != nil {
 		logger.Println(err)
