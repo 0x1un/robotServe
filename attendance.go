@@ -260,6 +260,12 @@ func queryDepartmentUserSchedulerListWeeks(at int) string {
 	if err := json.Unmarshal(data, &class); err != nil {
 		panic(err)
 	}
+	// remove "IT" prefix
+	for id, cName := range class {
+		if strings.HasPrefix(cName, "IT") {
+			class[id] = strings.Replace(cName, "IT", "", -1)
+		}
+	}
 	fromTime := xDate.UnixNano() / 1e6
 	endTime := xDate.AddDate(0, 0, 6).UnixNano() / 1e6
 	followDate := xDate

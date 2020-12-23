@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 
@@ -122,6 +123,12 @@ func attenCommand(resp *Content) []byte {
 		}
 
 		if strings.Contains(cmdStr, "week") {
+			if strings.Contains(cmdStr, "refresh") {
+				if err := os.Remove(".class"); err != nil {
+					return markdown("error:", err.Error())
+				}
+				return markdown("resp: ", "refresh class succeed!")
+			}
 			if strings.ContainsAny(cmdStr, "0123456789") {
 				loopCmdList(cmdList, "week", false, &buffer)
 				return markdown("shift week command", buffer.String())
