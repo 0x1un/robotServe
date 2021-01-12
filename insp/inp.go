@@ -2,6 +2,7 @@ package insp
 
 import (
 	"fmt"
+	"io/ioutil"
 	"math/rand"
 	"path/filepath"
 	"strings"
@@ -17,7 +18,6 @@ import (
 
 var (
 	cfg         *ini.File
-	randNum     int
 	metaConfig  *utils.Config
 	webdavURI   string
 	webdavUSER  string
@@ -27,9 +27,22 @@ var (
 	dateNow     string
 )
 
+var randRange = func(dirPath string) int {
+	dir, err := ioutil.ReadDir(dirPath)
+	if err != nil {
+		logrus.Fatal(fmt.Errorf("缺少现场、策略目录: %s", err.Error()))
+	}
+	var cnt int
+	for _, file := range dir {
+		if strings.HasSuffix(file.Name(), ".jpg") {
+			cnt++
+		}
+	}
+	return rand.Intn((cnt/2)-1) + 1
+}
+
 func initConfigure(log *logrus.Logger) {
 	rand.Seed(time.Now().UnixNano())
-	randNum = rand.Intn(6-1) + 1
 	var err error
 	cfg, err = ini.Load(cfgPath)
 	if err != nil {
@@ -80,7 +93,7 @@ func Insp(opUID string, log *logrus.Logger) ([]godingtalk.ProcessinstanceCreateR
 func GenModel(insps map[string][]string, opUID string) []godingtalk.ProcessinstanceCreateReq {
 	reqs := make([]godingtalk.ProcessinstanceCreateReq, 0)
 	reqs = append(reqs, AliModel(insps, opUID))
-	reqs = append(reqs, VkSdbModel(insps, opUID))
+	// reqs = append(reqs, VkSdbModel(insps, opUID))
 	reqs = append(reqs, DiDiModel(insps, opUID))
 	return reqs
 }

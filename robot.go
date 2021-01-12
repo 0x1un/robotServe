@@ -127,6 +127,9 @@ func attenCommand(resp *Content) []byte {
 				if err := os.Remove(".class"); err != nil {
 					return markdown("error:", err.Error())
 				}
+				if err := classToFile(); err != nil {
+					return markdown("err: ", "failed to write class file")
+				}
 				return markdown("resp: ", "refresh class succeed!")
 			}
 			if strings.ContainsAny(cmdStr, "0123456789") {

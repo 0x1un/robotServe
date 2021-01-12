@@ -33,10 +33,10 @@ func AliModel(components map[string][]string, opUID string) godingtalk.Processin
 	subFvs.Add("现场网络", "正常")
 	subFvs.Add("网络策略", "正常")
 	subFvs.Add("现场截图", []string{
-		fmt.Sprintf("%s阿里现场/现场截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%s阿里现场/现场截图-%d.jpg", metaConfig.ImgHost, randRange("gen/阿里现场")),
 	})
 	subFvs.Add("策略截图", []string{
-		fmt.Sprintf("%s阿里现场/策略截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%s阿里现场/策略截图-%d.jpg", metaConfig.ImgHost, randRange("gen/阿里现场")),
 	})
 	fvs.Add("巡检地点", []string{
 		"成都高朋全部",
@@ -80,10 +80,10 @@ func DiDiModel(components map[string][]string, opUID string) godingtalk.Processi
 	subFvs.Add("现场网络", "正常")
 	subFvs.Add("网络策略", "正常")
 	subFvs.Add("现场截图", []string{
-		fmt.Sprintf("%s滴滴现场/现场截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%s滴滴现场/现场截图-%d.jpg", metaConfig.ImgHost, randRange("gen/滴滴现场")),
 	})
 	subFvs.Add("策略截图", []string{
-		fmt.Sprintf("%s滴滴现场/策略截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%s滴滴现场/策略截图-%d.jpg", metaConfig.ImgHost, randRange("gen/滴滴现场")),
 	})
 	fvs.Add("巡检地点", []string{
 		"成都高朋全部",
@@ -123,10 +123,10 @@ func VkSdbModel(components map[string][]string, opUID string) godingtalk.Process
 	subFvs.Add("现场网络", "正常")
 	subFvs.Add("网络策略", "正常")
 	subFvs.Add("现场截图", []string{
-		fmt.Sprintf("%svk现场/现场截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%svk现场/现场截图-%d.jpg", metaConfig.ImgHost, randRange("gen/vk现场")),
 	})
 	subFvs.Add("策略截图", []string{
-		fmt.Sprintf("%svk现场/策略截图-%d.jpg", metaConfig.ImgHost, randNum),
+		fmt.Sprintf("%svk现场/策略截图-%d.jpg", metaConfig.ImgHost, randRange("gen/vk现场")),
 	})
 	fvs.Add("巡检地点", []string{"成都高朋全部"})
 	fvs.Add("巡检总结", "正常")
